@@ -23,7 +23,7 @@ StringVector MergeTwoVectors(StringVector firstvector, StringVector secondvector
 
 StringVector MergeAllVectors(std::vector<StringVector*>* vectors);
 
-void SplitAndSortVectors(std::vector<StringVector*>* vectors, StringVector* strings, ConcurrentTaskQueue* taskQueue);
+void SplitAndSortVectors(std::vector<StringVector*>* vectors, StringVector* strings, ConcurrentTaskQueue* taskQueue, int numberOfThreads);
 
 std::wstring GetDirectory();
 
@@ -58,7 +58,7 @@ int main()
 	taskQueue = new ConcurrentTaskQueue();
 	queueExecutor = new QueueExecutor(taskQueue, numberOfThreads);
 
-	SplitAndSortVectors(vectors, strings, taskQueue);
+	SplitAndSortVectors(vectors, strings, taskQueue, numberOfThreads);
 
 	queueExecutor->Start();
 
@@ -120,14 +120,26 @@ bool GetLinesOfFile(std::string filename, StringVector* stringsvector)
 	return true;
 }
 
-void SplitAndSortVectors(std::vector<StringVector*>* vectors, StringVector* strings, ConcurrentTaskQueue* taskQueue)
+void SplitAndSortVectors(std::vector<StringVector*>* vectors, StringVector* strings, ConcurrentTaskQueue* taskQueue, int numberOfThreads)
 {
-	for (int i = 0; i < strings->size(); i++) 
+	int part = strings->size() / numberOfThreads;
+	int addition = strings->size() % numberOfThreads;
+	int size = strings->size();
+	for (int i = 0; i < size;) 
 	{
 		StringVector* newVector = new StringVector();
 		vectors->push_back(newVector);
-		std::string str = strings->data()[i];
-		newVector->push_back(str);
+		for (int j = 0; j < part; j++)
+		{
+			std::string str = strings->data()[i++];
+			newVector->push_back(str);
+		}
+		if (addition > 0)
+		{
+			std::string str = strings->data()[i++];
+			newVector->push_back(str);
+			addition--;
+		}
 		taskQueue->WinPush([newVector]() { std::sort(newVector->begin(), newVector->end());});
 	}
 }
